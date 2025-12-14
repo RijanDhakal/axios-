@@ -31,45 +31,41 @@ const asyncFunction = async () => {
   // const res = await api.get<ApiResponse<Student[]>>("/students/get", {
   //   getTimeInterval: true,
   //   headers: {
-  //     "Content-Type": "Application/Json",
+  //     "content-type": "application/json",
   //   },
   //   config: true,
   // });
 
   // POST
-  const res = await api.post("/students/create", {
-    payload: {
-      studentId: 28,
-      name: "test",
-      address: "sunwal",
-      contact: "6767327832",
-      grade: 12,
-      section: 106,
-      stream: "SCIENCE",
-      password: "123456",
-    },
-    headers: {
-      "content-type": "application/json",
-    },
-    getTimeInterval: true,
-    config: true,
-  });
+  // const res = await api.post("/students/create", {
+  //   payload: {
+  //     studentId: 28,
+  //     name: "test",
+  //     address: "sunwal",
+  //     contact: "6767327832",
+  //     grade: 12,
+  //     section: 106,
+  //     stream: "SCIENCE",
+  //     password: "123456",
+  //   },
+  //   headers: {
+  //     "content-type": "application/json",
+  //   },
+  //   getTimeInterval: true,
+  //   config: true,
+  // });
 
   // PATCH
-  // const res = await api.patch("/students/update/2",{
-  //   getTimeInterval : true,
-  //   payload:{
-  //     name : "hahaha"
-  //   }
+  // const res = await api.patch<ApiResponse<Student>>("/students/update/2", {
+  //   getTimeInterval: true,
+  //   payload: {
+  //     name: "I did change it man",
+  //   },
+  //   // config: true,
   // });
 
   // DELETE
-  // const res = await api.delete({
-  //   url: "/students/delete",
-  //   payload: {
-  //     studentId: 4,
-  //   },
-  // });
+  const res = await api.delete<ApiResponse<[]>>("/students/delete/24");
   console.log(res);
 };
 asyncFunction();

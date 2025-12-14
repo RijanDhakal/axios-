@@ -116,10 +116,6 @@ class Axios {
     }
     if (options?.config) {
       response.config = fetchResponse.config;
-      // Application/Json is the default one for GET method
-      response.config.requestHeaders = {
-        "Content-Type": "Application/Json",
-      };
     }
     return response;
   }
@@ -136,7 +132,10 @@ class Axios {
         "Content-Type": "application/json",
       },
     };
-    if (fetchData.method !== "GET") {
+    if (
+      fetchData.method !== Methods.GET &&
+      fetchData.method !== Methods.DELETE
+    ) {
       if (!fetchData.data?.payload) {
         throw new HttpError({
           error: "BadRequestError",
@@ -257,18 +256,41 @@ class Axios {
       data: options,
     });
     const endTime = performance.now();
-    const timeTaken = (endTime - startTime).toFixed(2);
-    if (options.getTimeInterval) {
-      return {
-        data: fetchResponse,
-        timeTaken: `${timeTaken} ms`,
-      };
-    }
-    return this.responseBuilder({
+    return this.responseBuilder<T>({
       endTime: endTime,
       startTime: startTime,
       fetchResponse: fetchResponse,
       options: options,
+    });
+  }
+
+  async delete<T = any>(url: string, options?: options) {
+    // User can delete it directly from id in the api as well as pass some metadata and delete on the basis of where
+    const fetchUrl = this.buildFetchUrl(url);
+    let fetchResponse: fetchTimoutResponse<T>;
+    const startTime = performance.now();
+    if (
+      options &&
+      options.payload &&
+      Object.keys(options.payload).length !== 0
+    ) {
+      fetchResponse = await this.handleTimeOut<T>({
+        fetchUrl: fetchUrl,
+        method: Methods.DELETE,
+        data: options.payload,
+      });
+    } else {
+      fetchResponse = await this.handleTimeOut<T>({
+        fetchUrl: fetchUrl,
+        method: Methods.DELETE,
+      });
+    }
+    const endTime = performance.now();
+    return this.responseBuilder<T>({
+      endTime: endTime,
+      startTime: startTime,
+      fetchResponse: fetchResponse,
+      options: options ?? {},
     });
   }
 }
