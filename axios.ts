@@ -1,4 +1,5 @@
 import { HttpError } from "./errorHandler";
+import { addToQueue, runInterceptors } from "./interceptorsQueue";
 
 type CommonHeaders = {
   Authorization?: string;
@@ -56,6 +57,7 @@ interface fetchTimoutResponse<T> {
   config: requestConfig;
 }
 
+// Donot enable developer to have headers and payload in GET method option
 type getOptions = Omit<options, "headers" | "payload">;
 
 class Axios {
@@ -214,6 +216,7 @@ class Axios {
   }
 
   async get<T = any>(url: string, options?: getOptions) {
+    await runInterceptors();
     const fetchUrl = this.buildFetchUrl(url);
     const startTime = performance.now();
     const fetchResponse = await this.handleTimeOut<T>({
@@ -230,6 +233,7 @@ class Axios {
   }
 
   async post<T = any>(url: string, options?: options) {
+    await runInterceptors();
     const fetchUrl = this.buildFetchUrl(url ?? "");
     if (!options || Object.keys(options).length === 0 || !options.payload) {
       throw new HttpError({
@@ -255,6 +259,7 @@ class Axios {
   }
 
   async patch<T = any>(url: string, options?: options) {
+    await runInterceptors();
     const fetchUrl = this.buildFetchUrl(url ?? "");
     if (!options || Object.keys(options).length === 0 || !options.payload) {
       throw new HttpError({
@@ -281,6 +286,7 @@ class Axios {
 
   async delete<T = any>(url: string, options?: options) {
     // User can delete it directly from id in the api as well as pass some metadata and delete on the basis of where
+    await runInterceptors();
     const fetchUrl = this.buildFetchUrl(url);
     let fetchResponse: fetchTimoutResponse<T>;
     const startTime = performance.now();
@@ -307,6 +313,10 @@ class Axios {
       fetchResponse: fetchResponse,
       options: options ?? {},
     });
+  }
+
+  interceptors(Fn: Function) {
+    return addToQueue(Fn);
   }
 }
 

@@ -26,31 +26,44 @@ const api = axios.create({
   },
 });
 
+const interceptorDemoFn = async () => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve(console.log("Hello from interceptor function"));
+    }, 2000);
+  });
+};
+
+const myInterceptor1 = api.interceptors(interceptorDemoFn);
+const myInterceptor2 = api.interceptors(interceptorDemoFn);
+const myInterceptor3 = api.interceptors(interceptorDemoFn);
+
+
 const asyncFunction = async () => {
   // GET
-  // const res = await api.get<ApiResponse<Student[]>>("/students/get", {
-  //   getTimeInterval: true,
-  //   config: true,
-  // });
-
-  // POST
-  const res = await api.post("/students/create", {
-    payload: {
-      studentId: 27,
-      name: "test",
-      address: "sunwal",
-      contact: "6767327832",
-      grade: 12,
-      section: 106,
-      stream: "SCIENCE",
-      password: "123456",
-    },
-    headers: {
-      "content-type": "application/json",
-    },
+  const res = await api.get<ApiResponse<Student[]>>("/students/get", {
     getTimeInterval: true,
     config: true,
   });
+
+  // POST
+  // const res = await api.post("/students/create", {
+  //   payload: {
+  //     studentId: 27,
+  //     name: "test",
+  //     address: "sunwal",
+  //     contact: "6767327832",
+  //     grade: 12,
+  //     section: 106,
+  //     stream: "SCIENCE",
+  //     password: "123456",
+  //   },
+  //   headers: {
+  //     "content-type": "application/json",
+  //   },
+  //   getTimeInterval: true,
+  //   config: true,
+  // });
 
   // PATCH
   // const res = await api.patch<ApiResponse<Student>>("/students/update/2", {
