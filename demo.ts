@@ -12,6 +12,12 @@ interface Student {
   password: string;
 }
 
+interface ApiResponse<T> {
+  statusCode: number;
+  message: string;
+  data: T;
+}
+
 const api = axios.create({
   baseUrl: "http://localhost:3000",
   timeout: 3000,
@@ -22,28 +28,32 @@ const api = axios.create({
 
 const asyncFunction = async () => {
   // GET
-  const res = await api.get("/students/get", {
-    getTimeInterval: true,
-  });
-  // console.log("res :", res);
-
-  // POST
-  // const res = await api.post("/students/create", {
-  //   payload: {
-  //     studentId: 23,
-  //     name: "test",
-  //     address: "sunwal",
-  //     contact: "6767327832",
-  //     grade: 12,
-  //     section: 106,
-  //     stream: "SCIENCE",
-  //     password: "123456",
-  //   },
+  // const res = await api.get<ApiResponse<Student[]>>("/students/get", {
+  //   getTimeInterval: true,
   //   headers: {
   //     "Content-Type": "Application/Json",
   //   },
-  //   getTimeInterval: true,
+  //   config: true,
   // });
+
+  // POST
+  const res = await api.post("/students/create", {
+    payload: {
+      studentId: 28,
+      name: "test",
+      address: "sunwal",
+      contact: "6767327832",
+      grade: 12,
+      section: 106,
+      stream: "SCIENCE",
+      password: "123456",
+    },
+    headers: {
+      "content-type": "application/json",
+    },
+    getTimeInterval: true,
+    config: true,
+  });
 
   // PATCH
   // const res = await api.patch("/students/update/2",{

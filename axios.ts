@@ -1,21 +1,54 @@
 import { HttpError } from "./errorHandler";
 
+type HttpHeader = Record<string, string> | Headers;
+
+enum Methods {
+  GET = "GET",
+  POST = "POST",
+  PUT = "PUT",
+  PATCH = "PATCH",
+  DELETE = "DELETE",
+  HEAD = "HEAD",
+  OPTIONS = "OPTIONS",
+}
+
 interface config {
-  headers?: Record<string, string>;
+  headers?: HttpHeader;
   baseUrl?: string;
   timeout?: number;
 }
 
 interface FetchData {
   fetchUrl: string;
-  method: "GET" | "POST" | "PATCH" | "DELETE" | "PUT";
+  method: Methods;
   data?: options;
 }
 
 interface options {
-  headers?: Record<string, string>;
+  headers?: HttpHeader;
   getTimeInterval?: boolean;
   payload?: any;
+  config?: boolean;
+}
+
+interface requestConfig {
+  url: string;
+  method: Methods;
+  requestHeaders: HttpHeader;
+}
+
+interface ApiResponse<T = any> {
+  data: T;
+  statusCode: number;
+  headers: HttpHeader;
+  timeTaken?: string;
+  config?: requestConfig;
+}
+
+interface fetchTimoutResponse<T> {
+  data: T;
+  response: Response;
+  config: requestConfig;
 }
 
 class Axios {
@@ -32,6 +65,20 @@ class Axios {
 
   private buildFetchUrl(url: string) {
     // todo : check for params
+    if (
+      url === "" &&
+      !(
+        this.config.baseUrl?.startsWith("http://") ||
+        this.config.baseUrl?.startsWith("https://")
+      )
+    ) {
+      throw new HttpError({
+        error: "Client Conflict Error",
+        message: "Url with http / https  is required",
+        statusCode: 409,
+        path: this.config.baseUrl || url,
+      });
+    }
     if (url.startsWith("https://") || url.startsWith("http://")) return url;
     if (this.config.baseUrl) {
       return `${
@@ -47,7 +94,37 @@ class Axios {
       path: url,
     });
   }
-  private async handleTimeOut(fetchData: FetchData) {
+
+  private responseBuilder<T>({
+    fetchResponse,
+    startTime,
+    endTime,
+    options,
+  }: {
+    fetchResponse: fetchTimoutResponse<T>;
+    startTime: number;
+    endTime: number;
+    options?: options;
+  }) {
+    const response: ApiResponse<T> = {
+      data: fetchResponse.data,
+      headers: fetchResponse.response.headers,
+      statusCode: fetchResponse.response.status,
+    };
+    if (options?.getTimeInterval) {
+      response.timeTaken = `${(endTime - startTime).toFixed(2)} ms`;
+    }
+    if (options?.config) {
+      response.config = fetchResponse.config;
+      // Application/Json is the default one for GET method
+      response.config.requestHeaders = {
+        "Content-Type": "Application/Json",
+      };
+    }
+    return response;
+  }
+
+  private async handleTimeOut<T>(fetchData: FetchData) {
     const controller = new AbortController();
     const timeOutId = setTimeout(() => {
       controller.abort();
@@ -104,61 +181,41 @@ class Axios {
     const JsonResponse = await fetchApi.json();
     if (!fetchApi.ok) {
       throw new HttpError({
-        error: JsonResponse.message,
-        message: JsonResponse.message || fetchApi.type,
+        error: JsonResponse.message || fetchApi.type,
+        message: JsonResponse.message || fetchApi.statusText,
         statusCode: fetchApi.status,
-        path: fetchApi.url,
+        path: fetchData.fetchUrl,
       });
     }
-    return JsonResponse;
+    const res: fetchTimoutResponse<T> = {
+      data: JsonResponse as T,
+      response: fetchApi,
+      config: {
+        url: fetchData.fetchUrl,
+        method: fetchData.method,
+        requestHeaders: fetchData.data?.headers,
+      } as requestConfig,
+    };
+    return res;
   }
 
-  async get(url?: string, options?: options) {
-    const fetchUrl = this.buildFetchUrl(url ?? "");
+  async get<T = any>(url: string, options?: options) {
+    const fetchUrl = this.buildFetchUrl(url);
     const startTime = performance.now();
-    const fetchResponse = await this.handleTimeOut({
+    const fetchResponse = await this.handleTimeOut<T>({
       fetchUrl: fetchUrl,
-      method: "GET",
+      method: Methods.GET,
     });
     const endTime = performance.now();
-    const timeTaken = (endTime - startTime).toFixed(2);
-    if (options?.getTimeInterval) {
-      return {
-        data: fetchResponse,
-        timeTaken: `${timeTaken} ms`,
-      };
-    }
-    return fetchResponse;
-  }
-
-  async post(url?: string, options?: options) {
-    const fetchUrl = this.buildFetchUrl(url ?? "");
-    if (!options || Object.keys(options).length === 0 || !options.payload) {
-      throw new HttpError({
-        error: "NotFoundError",
-        message: "MetaData must be passed",
-        statusCode: 404,
-        path: fetchUrl,
-      });
-    }
-    const startTime = performance.now();
-    const fetchResponse = await this.handleTimeOut({
-      fetchUrl: fetchUrl,
-      method: "POST",
-      data: options,
+    return this.responseBuilder<T>({
+      endTime: endTime,
+      startTime: startTime,
+      fetchResponse: fetchResponse,
+      options: options ?? {},
     });
-    const endTime = performance.now();
-    const timeTaken = (endTime - startTime).toFixed(2);
-    if (options.getTimeInterval) {
-      return {
-        data: fetchResponse,
-        timeTaken: `${timeTaken} ms`,
-      };
-    }
-    return fetchResponse;
   }
 
-  async patch(url?: string, options?: options) {
+  async post<T = any>(url: string, options?: options) {
     const fetchUrl = this.buildFetchUrl(url ?? "");
     if (!options || Object.keys(options).length === 0 || !options.payload) {
       throw new HttpError({
@@ -169,9 +226,34 @@ class Axios {
       });
     }
     const startTime = performance.now();
-    const fetchResponse = await this.handleTimeOut({
+    const fetchResponse = await this.handleTimeOut<T>({
       fetchUrl: fetchUrl,
-      method: "PATCH",
+      method: Methods.POST,
+      data: options,
+    });
+    const endTime = performance.now();
+    return this.responseBuilder<T>({
+      endTime: endTime,
+      startTime: startTime,
+      fetchResponse: fetchResponse,
+      options: options,
+    });
+  }
+
+  async patch<T = any>(url: string, options?: options) {
+    const fetchUrl = this.buildFetchUrl(url ?? "");
+    if (!options || Object.keys(options).length === 0 || !options.payload) {
+      throw new HttpError({
+        error: "NotFoundError",
+        message: "MetaData must be passed",
+        statusCode: 404,
+        path: fetchUrl,
+      });
+    }
+    const startTime = performance.now();
+    const fetchResponse = await this.handleTimeOut<T>({
+      fetchUrl: fetchUrl,
+      method: Methods.PATCH,
       data: options,
     });
     const endTime = performance.now();
@@ -182,10 +264,13 @@ class Axios {
         timeTaken: `${timeTaken} ms`,
       };
     }
-    return fetchResponse;
+    return this.responseBuilder({
+      endTime: endTime,
+      startTime: startTime,
+      fetchResponse: fetchResponse,
+      options: options,
+    });
   }
-
-
 }
 
 function create(conf: config) {
